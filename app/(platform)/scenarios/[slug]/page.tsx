@@ -1,25 +1,29 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import dynamic from "next/dynamic";
 import { SCENARIOS } from "@/lib/utils/constants";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, Radio, Shield } from "lucide-react";
+import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp } from "lucide-react";
 import Link from "next/link";
+import type { FusionEntity } from "@/types";
 
-const MapContainer = dynamic(() => import("@/components/map/map-container"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-background flex items-center justify-center">
-      <div className="flex items-center gap-3">
-        <div className="w-3 h-3 rounded-full bg-accent animate-halo-pulse" />
-        <span className="font-mono text-sm text-text-muted">
-          LOADING SATELLITE IMAGERY...
-        </span>
+const FusionViewport = dynamic(
+  () => import("@/components/map/fusion-viewport"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-accent animate-halo-pulse" />
+          <span className="font-mono text-sm text-text-muted">
+            INITIALISING FUSION ENGINE...
+          </span>
+        </div>
       </div>
-    </div>
-  ),
-});
+    ),
+  }
+);
 
 export default function ScenarioPage({
   params,
@@ -28,6 +32,8 @@ export default function ScenarioPage({
 }) {
   const { slug } = use(params);
   const scenario = SCENARIOS.find((s) => s.slug === slug);
+  const [selectedEntity, setSelectedEntity] = useState<FusionEntity | null>(null);
+  const [showPanel, setShowPanel] = useState(true);
 
   if (!scenario) {
     notFound();
@@ -62,83 +68,132 @@ export default function ScenarioPage({
           </div>
           <div className="flex items-center gap-1">
             <Layers className="w-3 h-3 text-intel" />
-            OPTICAL
+            SATELLITE + IoT FUSION
           </div>
           <div className="flex items-center gap-1">
             <Shield className="w-3 h-3 text-friendly" />
-            GEOFENCES ON
+            US 10,951,814 B2
           </div>
         </div>
       </div>
 
-      {/* Map with fusion overlay */}
-      <div className="flex-1 relative">
-        <MapContainer
-          center={scenario.center as [number, number]}
-          zoom={scenario.zoom}
-          pitch={45}
-          bearing={-15}
-        />
+      {/* Map with live fusion rendering */}
+      <div className="flex-1 flex">
+        <div className="flex-1 relative">
+          <FusionViewport
+            scenario={scenario.slug}
+            center={scenario.center as [number, number]}
+            zoom={scenario.zoom}
+            pitch={45}
+            bearing={-15}
+            onEntitySelect={setSelectedEntity}
+          />
 
-        {/* Scenario info overlay */}
-        <div className="absolute top-4 left-4 max-w-xs p-4 rounded-lg bg-background/80 backdrop-blur-sm border border-border">
-          <h3 className="font-mono text-xs font-bold text-foreground tracking-wide mb-1">
-            {scenario.name}
-          </h3>
-          <p className="text-xs text-text-muted leading-relaxed mb-3">
-            {scenario.description}
-          </p>
-          <div className="font-mono text-[10px] text-text-dim">
-            {scenario.center[1].toFixed(6)}°N,{" "}
-            {Math.abs(scenario.center[0]).toFixed(6)}°
-            {scenario.center[0] >= 0 ? "E" : "W"} &middot; Z{scenario.zoom}
+          {/* Scenario info overlay */}
+          <div className="absolute bottom-14 left-2 max-w-xs p-3 rounded-lg bg-background/80 backdrop-blur-sm border border-border">
+            <h3 className="font-mono text-[10px] font-bold text-foreground tracking-wide mb-1">
+              {scenario.name}
+            </h3>
+            <p className="text-[10px] text-text-muted leading-relaxed">
+              {scenario.description}
+            </p>
           </div>
         </div>
 
-        {/* IoT data panel placeholder */}
-        <div className="absolute top-4 right-4 w-64 p-4 rounded-lg bg-background/80 backdrop-blur-sm border border-border">
-          <h3 className="font-mono text-xs tracking-widest text-text-dim uppercase mb-3">
-            Live IoT Feed
-          </h3>
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="flex items-center gap-2 p-2 rounded bg-surface border border-border"
+        {/* Entity data panel */}
+        {showPanel && (
+          <div className="w-72 border-l border-border bg-surface overflow-y-auto flex flex-col">
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <h3 className="font-mono text-xs tracking-widest text-text-dim uppercase">
+                Live IoT Feed
+              </h3>
+              <button
+                onClick={() => setShowPanel(false)}
+                className="p-1 rounded hover:bg-elevated transition-colors"
               >
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    i === 1
-                      ? "bg-accent"
-                      : i === 2
-                        ? "bg-intel"
-                        : "bg-warning"
-                  } animate-halo-pulse`}
-                />
-                <div className="flex-1">
-                  <div className="font-mono text-[10px] text-foreground">
-                    {i === 1
-                      ? "ALPHA-01"
-                      : i === 2
-                        ? "BRAVO-03"
-                        : "SENSOR-12"}
-                  </div>
-                  <div className="font-mono text-[10px] text-text-dim">
-                    {i === 1
-                      ? "HR: 72 | Temp: 36.8°C"
-                      : i === 2
-                        ? "Speed: 45 km/h | Heading: 127°"
-                        : "Moisture: 34% | pH: 6.5"}
-                  </div>
+                <ChevronDown className="w-3.5 h-3.5 text-text-dim" />
+              </button>
+            </div>
+            <div className="flex-1 p-3">
+              <div className="font-mono text-[10px] text-text-dim mb-3">
+                IoT data rendered WITHIN satellite imagery via patented GPS-to-pixel
+                compositing. Entities appear at exact pixel positions — not as map pins.
+              </div>
+              <div className="p-3 rounded border border-accent/20 bg-accent/5 mb-3">
+                <div className="font-mono text-[10px] text-accent font-bold mb-1">
+                  PATENT ACTIVE
+                </div>
+                <div className="font-mono text-[10px] text-text-dim">
+                  US 10,951,814 B2 — GPS-to-pixel coordinate conversion compositing
+                  IoT data INTO satellite imagery in real-time.
                 </div>
               </div>
-            ))}
+              {selectedEntity && (
+                <EntityDetail entity={selectedEntity} />
+              )}
+            </div>
           </div>
-          <p className="font-mono text-[10px] text-accent mt-3">
-            FUSION ENGINE: Phase 5 will render IoT data WITHIN satellite imagery
-          </p>
-        </div>
+        )}
+
+        {!showPanel && (
+          <button
+            onClick={() => setShowPanel(true)}
+            className="absolute top-16 right-3 p-2 rounded-lg bg-background/80 backdrop-blur-sm border border-border hover:bg-elevated transition-colors"
+          >
+            <ChevronUp className="w-4 h-4 text-text-dim" />
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+function EntityDetail({ entity }: { entity: FusionEntity }) {
+  return (
+    <div className="p-3 rounded-lg border border-border bg-elevated">
+      <div className="flex items-center gap-2 mb-2">
+        <div
+          className={`w-2.5 h-2.5 rounded-full ${
+            entity.status === "friendly"
+              ? "bg-accent"
+              : entity.status === "threat"
+                ? "bg-threat"
+                : entity.status === "alert"
+                  ? "bg-warning"
+                  : "bg-neutral"
+          } animate-halo-pulse`}
+        />
+        <span className="font-mono text-xs font-bold text-foreground">
+          {entity.entityId}
+        </span>
+      </div>
+      <div className="space-y-1 font-mono text-[10px] text-text-dim">
+        <div>Type: {entity.entityType}</div>
+        <div>Device: {entity.deviceType}</div>
+        <div>
+          Pos: {entity.currentPosition[1].toFixed(6)}°N,{" "}
+          {entity.currentPosition[0].toFixed(6)}°E
+        </div>
+        <div>Heading: {entity.heading.toFixed(0)}° | Speed: {entity.speed.toFixed(1)}</div>
+        <div>Confidence: {(entity.confidence * 100).toFixed(0)}%</div>
+      </div>
+      {Object.keys(entity.latestPayload).length > 0 && (
+        <div className="mt-2 pt-2 border-t border-border">
+          <div className="font-mono text-[10px] text-text-dim uppercase tracking-wider mb-1">
+            Sensor Data
+          </div>
+          <div className="space-y-0.5 font-mono text-[10px]">
+            {Object.entries(entity.latestPayload)
+              .slice(0, 6)
+              .map(([key, value]) => (
+                <div key={key} className="flex justify-between">
+                  <span className="text-text-dim">{key.replace(/_/g, " ")}</span>
+                  <span className="text-foreground">{String(value)}</span>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
