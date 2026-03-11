@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, Scan, Flame, Monitor, Tv, ChevronDown } from "lucide-react";
+import { Eye, Scan, Flame, Monitor, Tv, Palette, ChevronDown } from "lucide-react";
 
 export type VisualMode =
   | "standard"
   | "flir"
   | "nightvision"
   | "crt"
-  | "enhanced";
+  | "enhanced"
+  | "celshade";
 
 interface VisualModeConfig {
   id: VisualMode;
@@ -68,6 +69,16 @@ export const VISUAL_MODES: VisualModeConfig[] = [
       "saturate(0) contrast(1.6) brightness(0.85) sepia(0.5) hue-rotate(180deg) saturate(1.5)",
     overlay: "enhanced",
   },
+  {
+    id: "celshade",
+    label: "CEL-SHADE",
+    shortLabel: "CEL",
+    icon: <Palette className="w-3.5 h-3.5" />,
+    description: "Anime cel-shading — stylised tactical display",
+    filter:
+      "saturate(1.8) contrast(1.6) brightness(1.1)",
+    overlay: "celshade",
+  },
 ];
 
 export function getVisualModeConfig(mode: VisualMode): VisualModeConfig {
@@ -97,7 +108,7 @@ export function VisualModeSelector({
           className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-border hover:border-accent/30 transition-all"
         >
           <span
-            className={`${activeMode === "flir" ? "text-orange-400" : activeMode === "nightvision" ? "text-green-400" : activeMode === "crt" ? "text-amber-400" : activeMode === "enhanced" ? "text-cyan-400" : "text-accent"}`}
+            className={`${activeMode === "flir" ? "text-orange-400" : activeMode === "nightvision" ? "text-green-400" : activeMode === "crt" ? "text-amber-400" : activeMode === "enhanced" ? "text-cyan-400" : activeMode === "celshade" ? "text-pink-400" : "text-accent"}`}
           >
             {current.icon}
           </span>
@@ -131,7 +142,7 @@ export function VisualModeSelector({
                   }`}
                 >
                   <span
-                    className={`${mode.id === "flir" ? "text-orange-400" : mode.id === "nightvision" ? "text-green-400" : mode.id === "crt" ? "text-amber-400" : mode.id === "enhanced" ? "text-cyan-400" : "text-accent"}`}
+                    className={`${mode.id === "flir" ? "text-orange-400" : mode.id === "nightvision" ? "text-green-400" : mode.id === "crt" ? "text-amber-400" : mode.id === "enhanced" ? "text-cyan-400" : mode.id === "celshade" ? "text-pink-400" : "text-accent"}`}
                   >
                     {mode.icon}
                   </span>
@@ -386,6 +397,72 @@ export function VisualModeOverlay({
             <div className="text-[9px] opacity-60">3-5μm MWIR</div>
             <div className="text-[9px] opacity-60">COMPOSITE VIEW</div>
           </div>
+        </div>
+      )}
+
+      {/* Cel-shading / anime overlay */}
+      {mode === "celshade" && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          {/* Posterisation via SVG filter */}
+          <svg className="absolute w-0 h-0" aria-hidden="true">
+            <defs>
+              <filter id="cel-posterize">
+                <feComponentTransfer>
+                  <feFuncR type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+                  <feFuncG type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+                  <feFuncB type="discrete" tableValues="0 0.2 0.4 0.6 0.8 1" />
+                </feComponentTransfer>
+              </filter>
+            </defs>
+          </svg>
+          {/* Edge detection lines */}
+          <div
+            className="absolute inset-0 opacity-[0.08] mix-blend-multiply"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence baseFrequency='0.04' numOctaves='2' type='fractalNoise'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100' height='100' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+              backgroundSize: "256px 256px",
+            }}
+          />
+          {/* Bold outline effect — dark edges */}
+          <div
+            className="absolute inset-0 opacity-[0.15]"
+            style={{
+              backgroundImage:
+                "linear-gradient(45deg, rgba(0,0,0,0.3) 1px, transparent 1px), linear-gradient(-45deg, rgba(0,0,0,0.3) 1px, transparent 1px)",
+              backgroundSize: "4px 4px",
+            }}
+          />
+          {/* Warm colour wash */}
+          <div className="absolute inset-0 bg-pink-500/[0.04] mix-blend-color" />
+          {/* Speed lines in corners */}
+          <div
+            className="absolute top-0 right-0 w-1/4 h-1/4 opacity-[0.06]"
+            style={{
+              background:
+                "repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(236,72,153,0.5) 2px, rgba(236,72,153,0.5) 3px)",
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-0 w-1/4 h-1/4 opacity-[0.06]"
+            style={{
+              background:
+                "repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(236,72,153,0.5) 2px, rgba(236,72,153,0.5) 3px)",
+            }}
+          />
+          {/* CEL label */}
+          <div className="absolute top-3 right-3 font-mono text-[10px] text-pink-400/80 text-right">
+            <div>CEL-SHADE</div>
+            <div className="text-[9px] opacity-60">TACTICAL ANIME</div>
+            <div className="text-[9px] opacity-60">POSTERISED 6-LEVEL</div>
+          </div>
+          {/* Vignette */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, transparent 60%, rgba(20,0,20,0.3) 100%)",
+            }}
+          />
         </div>
       )}
     </div>

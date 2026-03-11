@@ -4,10 +4,11 @@ import { use, useState } from "react";
 import dynamic from "next/dynamic";
 import { SCENARIOS } from "@/lib/utils/constants";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp, Camera } from "lucide-react";
+import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp, Camera, Car } from "lucide-react";
 import Link from "next/link";
 import type { FusionEntity } from "@/types";
 import { CCTVOverlay } from "@/components/map/cctv-overlay";
+import { TrafficParticleOverlay } from "@/components/map/traffic-particles";
 
 const FusionViewport = dynamic(
   () => import("@/components/map/fusion-viewport"),
@@ -36,6 +37,7 @@ export default function ScenarioPage({
   const [selectedEntity, setSelectedEntity] = useState<FusionEntity | null>(null);
   const [showPanel, setShowPanel] = useState(true);
   const [showCCTV, setShowCCTV] = useState(true);
+  const [showTraffic, setShowTraffic] = useState(true);
 
   if (!scenario) {
     notFound();
@@ -87,6 +89,17 @@ export default function ScenarioPage({
             <Camera className="w-3 h-3" />
             <span className="font-mono text-[10px]">CCTV</span>
           </button>
+          <button
+            onClick={() => setShowTraffic(!showTraffic)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              showTraffic
+                ? "text-intel bg-intel/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Car className="w-3 h-3" />
+            <span className="font-mono text-[10px]">TRAFFIC</span>
+          </button>
         </div>
       </div>
 
@@ -100,10 +113,17 @@ export default function ScenarioPage({
             pitch={45}
             bearing={-15}
             onEntitySelect={setSelectedEntity}
-          />
-
-          {/* CCTV Overlay */}
-          <CCTVOverlay scenario={scenario.slug} enabled={showCCTV} />
+          >
+            {/* CCTV feeds rendered inside MapGL for 3D positioning */}
+            <CCTVOverlay scenario={scenario.slug} enabled={showCCTV} />
+            {/* Procedural traffic particles */}
+            <TrafficParticleOverlay
+              centerLng={scenario.center[0]}
+              centerLat={scenario.center[1]}
+              enabled={showTraffic}
+              density={3}
+            />
+          </FusionViewport>
 
           {/* Scenario info overlay */}
           <div className="absolute bottom-14 left-2 max-w-xs p-3 rounded-lg bg-background/80 backdrop-blur-sm border border-border z-30">

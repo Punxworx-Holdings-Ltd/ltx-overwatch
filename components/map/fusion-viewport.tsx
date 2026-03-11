@@ -20,6 +20,7 @@ interface FusionViewportProps {
   pitch?: number;
   bearing?: number;
   onEntitySelect?: (entity: FusionEntity) => void;
+  children?: React.ReactNode;
 }
 
 export default function FusionViewport({
@@ -29,6 +30,7 @@ export default function FusionViewport({
   pitch = 45,
   bearing = 0,
   onEntitySelect,
+  children,
 }: FusionViewportProps) {
   const [viewState, setViewState] = useState({
     longitude: center?.[0] ?? MAP_DEFAULTS.center[0],
@@ -101,6 +103,7 @@ export default function FusionViewport({
       >
         <DeckGLOverlay layers={layers} />
         <NavigationControl position="top-right" showCompass showZoom />
+        {children}
       </MapGL>
 
       {/* Status bar */}

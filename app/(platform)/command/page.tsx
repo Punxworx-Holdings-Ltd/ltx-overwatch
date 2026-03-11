@@ -14,7 +14,7 @@ import {
   Clock,
   ChevronRight,
   Cpu,
-  Waves,
+  Plane,
   TrendingUp,
 } from "lucide-react";
 import { SCENARIOS, PATENT } from "@/lib/utils/constants";
@@ -25,6 +25,8 @@ import {
   type VisualMode,
 } from "@/components/map/visual-modes";
 import { HudOverlay } from "@/components/map/hud-overlay";
+import { SatelliteOrbitOverlay, SatelliteConstellationPanel } from "@/components/map/satellite-orbits";
+import { LiveFlightOverlay } from "@/components/map/live-flights";
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,
@@ -153,6 +155,8 @@ const scenarioDevices: Record<string, number> = {
 export default function CommandPage() {
   const metrics = useTickingMetrics();
   const [visualMode, setVisualMode] = useState<VisualMode>("standard");
+  const [showSatellites, setShowSatellites] = useState(true);
+  const [showFlights, setShowFlights] = useState(true);
   const [viewState, setViewState] = useState({
     latitude: 25,
     longitude: 20,
@@ -186,7 +190,29 @@ export default function CommandPage() {
         <span className="font-mono text-[10px] text-text-dim">
           Global situational awareness — all sectors
         </span>
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            onClick={() => setShowSatellites(!showSatellites)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors font-mono text-[10px] ${
+              showSatellites
+                ? "text-warning bg-warning/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Satellite className="w-3 h-3" />
+            SAT
+          </button>
+          <button
+            onClick={() => setShowFlights(!showFlights)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors font-mono text-[10px] ${
+              showFlights
+                ? "text-intel bg-intel/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Plane className="w-3 h-3" />
+            ADS-B
+          </button>
           <VisualModeSelector
             activeMode={visualMode}
             onModeChange={setVisualMode}
@@ -269,7 +295,15 @@ export default function CommandPage() {
               pitch={0}
               bearing={0}
               onViewStateChange={handleViewStateChange}
-            />
+            >
+              {/* Live satellite constellation */}
+              <SatelliteOrbitOverlay enabled={showSatellites} />
+              {/* Live ADS-B flight tracking */}
+              <LiveFlightOverlay
+                bbox={[-30, -10, 60, 65]}
+                enabled={showFlights}
+              />
+            </MapContainer>
           </VisualModeOverlay>
           <HudOverlay
             lat={viewState.latitude}
@@ -405,6 +439,17 @@ export default function CommandPage() {
               ))}
             </div>
           </div>
+
+          {/* Satellite Constellation */}
+          {showSatellites && (
+            <div className="p-4 border-b border-border">
+              <h3 className="font-mono text-xs tracking-widest text-text-dim uppercase mb-3 flex items-center gap-2">
+                <Satellite className="w-3.5 h-3.5 text-warning" />
+                Satellite Constellation
+              </h3>
+              <SatelliteConstellationPanel compact />
+            </div>
+          )}
 
           {/* System status */}
           <div className="p-4">

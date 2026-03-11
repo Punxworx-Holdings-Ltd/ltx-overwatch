@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { Marker } from "react-map-gl/mapbox";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plane, Radio } from "lucide-react";
 
@@ -56,7 +57,8 @@ async function fetchFlights(
 
 /**
  * Live flight overlay — shows real aircraft positions on the map
- * Uses OpenSky Network free API
+ * Uses react-map-gl Markers for accurate geo-positioning
+ * Powered by OpenSky Network free API
  */
 export function LiveFlightOverlay({
   bbox,
@@ -67,30 +69,75 @@ export function LiveFlightOverlay({
 }) {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lastFetch, setLastFetch] = useState(0);
+  const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!bbox || !enabled) return;
     setLoading(true);
     const data = await fetchFlights(bbox);
     setFlights(data);
-    setLastFetch(Date.now());
     setLoading(false);
   }, [bbox, enabled]);
 
   useEffect(() => {
     if (!enabled || !bbox) return;
     refresh();
-    const id = setInterval(refresh, 15000); // Refresh every 15s
+    const id = setInterval(refresh, 15000);
     return () => clearInterval(id);
   }, [refresh, enabled, bbox]);
 
   if (!enabled || flights.length === 0) return null;
 
+  const selected = selectedFlight
+    ? flights.find((f) => f.icao24 === selectedFlight)
+    : null;
+
   return (
-    <div className="absolute inset-0 pointer-events-none z-10">
+    <>
+      {/* Flight markers — geo-positioned via Mapbox Markers */}
+      {flights.slice(0, 40).map((flight) => (
+        <Marker
+          key={flight.icao24}
+          longitude={flight.lng}
+          latitude={flight.lat}
+          anchor="center"
+        >
+          <div
+            className="cursor-pointer group relative"
+            onClick={() =>
+              setSelectedFlight(
+                selectedFlight === flight.icao24 ? null : flight.icao24
+              )
+            }
+          >
+            {/* Aircraft icon rotated to heading */}
+            <div
+              style={{ transform: `rotate(${flight.heading}deg)` }}
+            >
+              <div
+                className="w-2.5 h-2.5 bg-intel/80 rotate-45 border border-intel/50"
+                style={{
+                  boxShadow: "0 0 6px rgba(59,130,246,0.4)",
+                }}
+              />
+            </div>
+            {/* Callsign on hover */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              <div className="px-1.5 py-0.5 rounded bg-background/90 border border-intel/30">
+                <span className="font-mono text-[9px] text-intel">
+                  {flight.callsign || flight.icao24}
+                </span>
+                <span className="font-mono text-[8px] text-text-dim ml-1">
+                  {Math.round(flight.altitude)}m
+                </span>
+              </div>
+            </div>
+          </div>
+        </Marker>
+      ))}
+
       {/* Flight count badge */}
-      <div className="absolute top-3 right-40 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-intel/30 flex items-center gap-2 pointer-events-auto">
+      <div className="absolute top-3 right-40 px-3 py-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-intel/30 flex items-center gap-2 z-30 pointer-events-none">
         <Plane className="w-3.5 h-3.5 text-intel" />
         <span className="font-mono text-[10px] text-intel">
           {flights.length} LIVE AIRCRAFT
@@ -100,44 +147,57 @@ export function LiveFlightOverlay({
         )}
       </div>
 
-      {/* Flight markers — rendered as absolute positioned elements */}
-      <AnimatePresence>
-        {flights.slice(0, 30).map((flight) => {
-          // Note: actual pixel positioning should use map projection
-          // This is a simplified overlay for visual demo
-          return (
-            <motion.div
-              key={flight.icao24}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0 }}
-              className="absolute pointer-events-auto group"
-              title={`${flight.callsign || flight.icao24} — ${Math.round(flight.altitude)}m — ${Math.round(flight.velocity * 3.6)}km/h`}
-            >
-              <div
-                className="relative"
-                style={{
-                  transform: `rotate(${flight.heading}deg)`,
-                }}
-              >
-                <div className="w-2 h-2 bg-intel/80 rotate-45 border border-intel/50" />
-              </div>
-              {/* Callsign label on hover */}
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="px-1.5 py-0.5 rounded bg-background/90 border border-intel/30 whitespace-nowrap">
-                  <span className="font-mono text-[9px] text-intel">
-                    {flight.callsign || flight.icao24}
-                  </span>
-                  <span className="font-mono text-[8px] text-text-dim ml-1">
-                    {Math.round(flight.altitude)}m
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-      </AnimatePresence>
-    </div>
+      {/* Selected flight info */}
+      {selected && (
+        <div className="absolute bottom-14 right-3 w-64 rounded-lg bg-background/95 backdrop-blur-md border border-intel/30 shadow-2xl z-40 overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
+            <Plane className="w-3.5 h-3.5 text-intel" />
+            <span className="font-mono text-[10px] text-foreground font-bold flex-1">
+              {selected.callsign || selected.icao24}
+            </span>
+            <span className="font-mono text-[8px] px-1.5 py-0.5 rounded bg-intel/20 text-intel">
+              LIVE
+            </span>
+          </div>
+          <div className="p-3 space-y-1.5 font-mono text-[9px]">
+            <div className="flex justify-between">
+              <span className="text-text-dim">ICAO24</span>
+              <span className="text-intel">{selected.icao24}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-dim">ALTITUDE</span>
+              <span className="text-intel">
+                {Math.round(selected.altitude)}m
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-dim">SPEED</span>
+              <span className="text-intel">
+                {Math.round(selected.velocity * 3.6)} km/h
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-dim">HEADING</span>
+              <span className="text-intel">
+                {Math.round(selected.heading)}°
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-dim">POSITION</span>
+              <span className="text-intel tabular-nums">
+                {selected.lat.toFixed(4)}° {selected.lng.toFixed(4)}°
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-dim">STATUS</span>
+              <span className={selected.onGround ? "text-warning" : "text-accent"}>
+                {selected.onGround ? "ON GROUND" : "AIRBORNE"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
