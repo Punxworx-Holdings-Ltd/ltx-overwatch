@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import MapGL, { NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_DEFAULTS } from "@/lib/utils/constants";
+import type { MapRef } from "react-map-gl/mapbox";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -12,7 +13,15 @@ interface MapContainerProps {
   zoom?: number;
   pitch?: number;
   bearing?: number;
+  terrain?: boolean;
   children?: React.ReactNode;
+  onViewStateChange?: (vs: {
+    latitude: number;
+    longitude: number;
+    zoom: number;
+    pitch: number;
+    bearing: number;
+  }) => void;
 }
 
 export default function MapContainer({
@@ -20,8 +29,11 @@ export default function MapContainer({
   zoom,
   pitch,
   bearing,
+  terrain = false,
   children,
+  onViewStateChange,
 }: MapContainerProps) {
+  const mapRef = useRef<MapRef>(null);
   const [viewState, setViewState] = useState({
     longitude: center?.[0] ?? MAP_DEFAULTS.center[0],
     latitude: center?.[1] ?? MAP_DEFAULTS.center[1],
@@ -31,9 +43,62 @@ export default function MapContainer({
   });
 
   const onMove = useCallback(
-    (evt: { viewState: typeof viewState }) => setViewState(evt.viewState),
-    []
+    (evt: { viewState: typeof viewState }) => {
+      setViewState(evt.viewState);
+      onViewStateChange?.(evt.viewState);
+    },
+    [onViewStateChange]
   );
+
+  // Enable 3D terrain when map loads
+  useEffect(() => {
+    if (!terrain) return;
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const enableTerrain = () => {
+      if (!map.getSource("mapbox-dem")) {
+        map.addSource("mapbox-dem", {
+          type: "raster-dem",
+          url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+          tileSize: 512,
+          maxzoom: 14,
+        });
+      }
+      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
+
+      // Add 3D building extrusion if not present
+      const layers = map.getStyle()?.layers;
+      if (layers && !map.getLayer("3d-buildings")) {
+        const labelLayer = layers.find(
+          (l) => l.type === "symbol" && (l.layout as Record<string, unknown>)?.["text-field"]
+        );
+        map.addLayer(
+          {
+            id: "3d-buildings",
+            source: "composite",
+            "source-layer": "building",
+            filter: ["==", "extrude", "true"],
+            type: "fill-extrusion",
+            minzoom: 14,
+            paint: {
+              "fill-extrusion-color": "#1a1a2e",
+              "fill-extrusion-height": ["get", "height"],
+              "fill-extrusion-base": ["get", "min_height"],
+              "fill-extrusion-opacity": 0.7,
+            },
+          },
+          labelLayer?.id
+        );
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      enableTerrain();
+    } else {
+      map.on("style.load", enableTerrain);
+    }
+  }, [terrain]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -52,6 +117,7 @@ export default function MapContainer({
 
   return (
     <MapGL
+      ref={mapRef}
       {...viewState}
       onMove={onMove}
       mapboxAccessToken={MAPBOX_TOKEN}
@@ -61,13 +127,6 @@ export default function MapContainer({
       minZoom={MAP_DEFAULTS.minZoom}
     >
       <NavigationControl position="top-right" showCompass showZoom />
-      {/* Coordinate readout */}
-      <div className="absolute bottom-2 left-2 px-3 py-1.5 rounded bg-background/80 backdrop-blur-sm border border-border">
-        <span className="data-readout text-text-dim">
-          {viewState.latitude.toFixed(6)}°N {viewState.longitude.toFixed(6)}°E Z
-          {viewState.zoom.toFixed(1)}
-        </span>
-      </div>
       {children}
     </MapGL>
   );

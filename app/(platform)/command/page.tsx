@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
   Satellite,
@@ -19,6 +19,12 @@ import {
 } from "lucide-react";
 import { SCENARIOS, PATENT } from "@/lib/utils/constants";
 import Link from "next/link";
+import {
+  VisualModeSelector,
+  VisualModeOverlay,
+  type VisualMode,
+} from "@/components/map/visual-modes";
+import { HudOverlay } from "@/components/map/hud-overlay";
 
 const MapContainer = dynamic(() => import("@/components/map/map-container"), {
   ssr: false,
@@ -146,6 +152,27 @@ const scenarioDevices: Record<string, number> = {
 
 export default function CommandPage() {
   const metrics = useTickingMetrics();
+  const [visualMode, setVisualMode] = useState<VisualMode>("standard");
+  const [viewState, setViewState] = useState({
+    latitude: 25,
+    longitude: 20,
+    zoom: 2.2,
+    pitch: 0,
+    bearing: 0,
+  });
+
+  const handleViewStateChange = useCallback(
+    (vs: {
+      latitude: number;
+      longitude: number;
+      zoom: number;
+      pitch: number;
+      bearing: number;
+    }) => {
+      setViewState(vs);
+    },
+    []
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -160,6 +187,11 @@ export default function CommandPage() {
           Global situational awareness — all sectors
         </span>
         <div className="ml-auto flex items-center gap-4">
+          <VisualModeSelector
+            activeMode={visualMode}
+            onModeChange={setVisualMode}
+            compact
+          />
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full bg-accent animate-halo-pulse" />
             <span className="font-mono text-[10px] text-accent">LIVE</span>
@@ -230,7 +262,24 @@ export default function CommandPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Globe / map view */}
         <div className="flex-1 relative">
-          <MapContainer center={[20, 25]} zoom={2.2} pitch={0} bearing={0} />
+          <VisualModeOverlay mode={visualMode}>
+            <MapContainer
+              center={[20, 25]}
+              zoom={2.2}
+              pitch={0}
+              bearing={0}
+              onViewStateChange={handleViewStateChange}
+            />
+          </VisualModeOverlay>
+          <HudOverlay
+            lat={viewState.latitude}
+            lng={viewState.longitude}
+            zoom={viewState.zoom}
+            bearing={viewState.bearing}
+            pitch={viewState.pitch}
+            entityCount={metrics.devices}
+            mode={visualMode}
+          />
 
           {/* Mission zone markers overlaid on globe */}
           {SCENARIOS.map((s, i) => {
