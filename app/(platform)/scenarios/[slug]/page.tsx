@@ -4,7 +4,7 @@ import { use, useState } from "react";
 import dynamic from "next/dynamic";
 import { SCENARIOS } from "@/lib/utils/constants";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp, Camera, Car } from "lucide-react";
+import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp, Camera, Car, Box } from "lucide-react";
 import Link from "next/link";
 import type { FusionEntity } from "@/types";
 import { CCTVOverlay } from "@/components/map/cctv-overlay";
@@ -38,6 +38,7 @@ export default function ScenarioPage({
   const [showPanel, setShowPanel] = useState(true);
   const [showCCTV, setShowCCTV] = useState(true);
   const [showTraffic, setShowTraffic] = useState(true);
+  const [show3DTiles, setShow3DTiles] = useState(false);
 
   if (!scenario) {
     notFound();
@@ -100,6 +101,17 @@ export default function ScenarioPage({
             <Car className="w-3 h-3" />
             <span className="font-mono text-[10px]">TRAFFIC</span>
           </button>
+          <button
+            onClick={() => setShow3DTiles(!show3DTiles)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              show3DTiles
+                ? "text-accent bg-accent/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Box className="w-3 h-3" />
+            <span className="font-mono text-[10px]">3D TILES</span>
+          </button>
         </div>
       </div>
 
@@ -113,6 +125,7 @@ export default function ScenarioPage({
             pitch={45}
             bearing={-15}
             onEntitySelect={setSelectedEntity}
+            show3DTiles={show3DTiles}
           >
             {/* CCTV feeds rendered inside MapGL for 3D positioning */}
             <CCTVOverlay scenario={scenario.slug} enabled={showCCTV} />

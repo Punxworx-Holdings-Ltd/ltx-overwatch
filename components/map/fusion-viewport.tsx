@@ -7,6 +7,7 @@ import { useFusionEngine } from "@/hooks/use-fusion-engine";
 import { createFusionHaloLayer, createFusionCoreLayer } from "@/lib/layers/fusion-halo-layer";
 import { createEntityLabelLayer } from "@/lib/layers/entity-icon-layer";
 import { createTrailPathLayer } from "@/lib/layers/trail-path-layer";
+import { createGoogle3DTilesLayer } from "@/lib/layers/google-3d-tiles-layer";
 import { MAP_DEFAULTS } from "@/lib/utils/constants";
 import type { FusionEntity } from "@/types";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -21,6 +22,7 @@ interface FusionViewportProps {
   bearing?: number;
   onEntitySelect?: (entity: FusionEntity) => void;
   children?: React.ReactNode;
+  show3DTiles?: boolean;
 }
 
 export default function FusionViewport({
@@ -31,6 +33,7 @@ export default function FusionViewport({
   bearing = 0,
   onEntitySelect,
   children,
+  show3DTiles = false,
 }: FusionViewportProps) {
   const [viewState, setViewState] = useState({
     longitude: center?.[0] ?? MAP_DEFAULTS.center[0],
@@ -54,6 +57,10 @@ export default function FusionViewport({
   const layers = useMemo(() => {
     const lyrs = [];
 
+    // Google Photorealistic 3D Tiles (absolute bottom — replaces flat satellite tiles)
+    const tiles3D = createGoogle3DTilesLayer(show3DTiles);
+    if (tiles3D) lyrs.push(tiles3D);
+
     // Trail paths (bottom layer — rendered first)
     const trailLayer = createTrailPathLayer(entities, {
       zoom: viewState.zoom,
@@ -73,7 +80,7 @@ export default function FusionViewport({
     if (labelLayer) lyrs.push(labelLayer);
 
     return lyrs;
-  }, [entities, viewState.zoom]);
+  }, [entities, viewState.zoom, show3DTiles]);
 
   if (!MAPBOX_TOKEN) {
     return (

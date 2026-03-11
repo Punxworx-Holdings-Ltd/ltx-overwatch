@@ -16,6 +16,7 @@ import {
   Cpu,
   Plane,
   TrendingUp,
+  Box,
 } from "lucide-react";
 import { SCENARIOS, PATENT } from "@/lib/utils/constants";
 import Link from "next/link";
@@ -157,6 +158,7 @@ export default function CommandPage() {
   const [visualMode, setVisualMode] = useState<VisualMode>("standard");
   const [showSatellites, setShowSatellites] = useState(true);
   const [showFlights, setShowFlights] = useState(true);
+  const [show3DTiles, setShow3DTiles] = useState(false);
   const [viewState, setViewState] = useState({
     latitude: 25,
     longitude: 20,
@@ -212,6 +214,17 @@ export default function CommandPage() {
           >
             <Plane className="w-3 h-3" />
             ADS-B
+          </button>
+          <button
+            onClick={() => setShow3DTiles(!show3DTiles)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors font-mono text-[10px] ${
+              show3DTiles
+                ? "text-accent bg-accent/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Box className="w-3 h-3" />
+            3D
           </button>
           <VisualModeSelector
             activeMode={visualMode}
@@ -292,8 +305,9 @@ export default function CommandPage() {
             <MapContainer
               center={[20, 25]}
               zoom={2.2}
-              pitch={0}
+              pitch={show3DTiles ? 45 : 0}
               bearing={0}
+              show3DTiles={show3DTiles}
               onViewStateChange={handleViewStateChange}
             >
               {/* Live satellite constellation */}

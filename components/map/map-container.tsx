@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import MapGL, { NavigationControl } from "react-map-gl/mapbox";
+import { DeckGLOverlay } from "./deckgl-overlay";
+import { createGoogle3DTilesLayer } from "@/lib/layers/google-3d-tiles-layer";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAP_DEFAULTS } from "@/lib/utils/constants";
 import type { MapRef } from "react-map-gl/mapbox";
@@ -14,6 +16,7 @@ interface MapContainerProps {
   pitch?: number;
   bearing?: number;
   terrain?: boolean;
+  show3DTiles?: boolean;
   children?: React.ReactNode;
   onViewStateChange?: (vs: {
     latitude: number;
@@ -30,6 +33,7 @@ export default function MapContainer({
   pitch,
   bearing,
   terrain = false,
+  show3DTiles = false,
   children,
   onViewStateChange,
 }: MapContainerProps) {
@@ -49,6 +53,14 @@ export default function MapContainer({
     },
     [onViewStateChange]
   );
+
+  // Build deck.gl layers (Google 3D Tiles)
+  const layers = useMemo(() => {
+    const lyrs = [];
+    const tiles3D = createGoogle3DTilesLayer(show3DTiles);
+    if (tiles3D) lyrs.push(tiles3D);
+    return lyrs;
+  }, [show3DTiles]);
 
   // Enable 3D terrain when map loads
   useEffect(() => {
@@ -126,6 +138,7 @@ export default function MapContainer({
       maxZoom={MAP_DEFAULTS.maxZoom}
       minZoom={MAP_DEFAULTS.minZoom}
     >
+      {layers.length > 0 && <DeckGLOverlay layers={layers} />}
       <NavigationControl position="top-right" showCompass showZoom />
       {children}
     </MapGL>
