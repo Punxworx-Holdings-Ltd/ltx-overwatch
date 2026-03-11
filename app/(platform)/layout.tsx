@@ -15,9 +15,11 @@ export default function PlatformLayout({
 
       <div className="flex">
         <Sidebar />
-        <div className="flex-1 ml-16">
+        {/* ml-16 on desktop for sidebar, ml-0 on mobile */}
+        <div className="flex-1 ml-0 md:ml-16">
           <Header />
-          <main className="h-[calc(100vh-22px-48px-22px)] overflow-auto">
+          {/* Account for mobile bottom nav (56px) + bottom banner (22px) */}
+          <main className="h-[calc(100vh-22px-48px-22px)] md:h-[calc(100vh-22px-48px-22px)] overflow-auto pb-16 md:pb-0">
             {children}
           </main>
         </div>

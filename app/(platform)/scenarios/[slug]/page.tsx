@@ -4,9 +4,10 @@ import { use, useState } from "react";
 import dynamic from "next/dynamic";
 import { SCENARIOS } from "@/lib/utils/constants";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Layers, Radio, Shield, ChevronDown, ChevronUp, Camera } from "lucide-react";
 import Link from "next/link";
 import type { FusionEntity } from "@/types";
+import { CCTVOverlay } from "@/components/map/cctv-overlay";
 
 const FusionViewport = dynamic(
   () => import("@/components/map/fusion-viewport"),
@@ -34,6 +35,7 @@ export default function ScenarioPage({
   const scenario = SCENARIOS.find((s) => s.slug === slug);
   const [selectedEntity, setSelectedEntity] = useState<FusionEntity | null>(null);
   const [showPanel, setShowPanel] = useState(true);
+  const [showCCTV, setShowCCTV] = useState(true);
 
   if (!scenario) {
     notFound();
@@ -74,6 +76,17 @@ export default function ScenarioPage({
             <Shield className="w-3 h-3 text-friendly" />
             US 10,951,814 B2
           </div>
+          <button
+            onClick={() => setShowCCTV(!showCCTV)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
+              showCCTV
+                ? "text-accent bg-accent/10"
+                : "text-text-dim hover:text-foreground"
+            }`}
+          >
+            <Camera className="w-3 h-3" />
+            <span className="font-mono text-[10px]">CCTV</span>
+          </button>
         </div>
       </div>
 
@@ -89,8 +102,11 @@ export default function ScenarioPage({
             onEntitySelect={setSelectedEntity}
           />
 
+          {/* CCTV Overlay */}
+          <CCTVOverlay scenario={scenario.slug} enabled={showCCTV} />
+
           {/* Scenario info overlay */}
-          <div className="absolute bottom-14 left-2 max-w-xs p-3 rounded-lg bg-background/80 backdrop-blur-sm border border-border">
+          <div className="absolute bottom-14 left-2 max-w-xs p-3 rounded-lg bg-background/80 backdrop-blur-sm border border-border z-30">
             <h3 className="font-mono text-[10px] font-bold text-foreground tracking-wide mb-1">
               {scenario.name}
             </h3>
